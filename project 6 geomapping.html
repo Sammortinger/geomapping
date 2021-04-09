@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<title>Countries I've Visited</title>
+		<script type="text/javascript" src="./d3.js"></script>
+        <script src="https://d3js.org/d3-array.v2.min.js"></script>
+        <script src="https://d3js.org/d3-geo.v2.min.js"></script>
+        <script src="https://d3js.org/d3-geo-projection.v3.min.js"></script>
+		<script src="http://d3js.org/d3.v3.min.js"></script>
+	</head>
+	<body>
+		<h1>Countries I've Visited</h1>
+        <svg id="map"></svg>
+		<script type="text/javascript">
+
+			var width = screen.width - 50,
+				height = screen.height - 75,
+				centered;
+
+			var projection = d3.geo.mercator()
+			.scale(180)
+			// Center the Map
+			.center([0, 40])
+			.translate([width / 2, height / 2]);
+
+			var path = d3.geo.path()
+			.projection(projection);
+
+			// Set svg width & height
+			var svg = d3.select('svg')
+			.attr('width', width)
+			.attr('height', height);
+
+			// Add background
+			svg.append('rect')
+			.attr('class', 'background')
+			.attr('width', width)
+			.attr('height', height)
+			.attr('fill', 'lightblue'); //ocean color
+
+			var g = svg.append('g');
+
+			var mapLayer = g.append('g')
+			.classed('map-layer', true);
+
+			var countries = [];
+
+			d3.csv('countries-visited.csv', function(data) {
+				countries = data;
+				console.log(countries)
+			})
+
+
+			d3.json('custom.geo.json', function(error, mapData) {
+				var features = mapData.features;
+
+				var countriesVisited = countries.map(a => a.country);
+
+				console.log(features);
+
+				// Draw each province as a path
+				mapLayer.selectAll('path')
+					.data(features)
+					.enter().append('path')
+					.attr('d', path)
+					.attr('stroke', 'black')
+					.attr('stroke-width', 0.2)
+					.attr('name', function(d) { return d.properties.geounit })
+					.attr('year', function(d) {
+						if(countriesVisited.indexOf(d.properties.geounit) >= 0)
+						{
+							return countries.filter(a => a.country === d.properties.geounit)[0].year;
+						}
+						else
+						{
+							return 0
+						} 
+					})
+					.attr('vector-effect', 'non-scaling-stroke')
+					.style('fill', function(d) {
+						console.log(d);
+						if(countriesVisited.indexOf(d.properties.geounit) >= 0)
+						{
+							return 'limegreen';
+						}
+						else
+						{
+							return 'white';
+						}
+					})
+					.on('mouseover', mouseover) //Handles Highlighting
+					.on('mouseout', mouseout); //Removes Highlighting on mouse-leave
+
+					/* Zoom and Pan*/
+					var svg = d3.select("svg")
+					.call(d3.behavior.zoom().on("zoom", function () {
+						mapLayer.attr("transform", "translate(" + d3.event.translate + ")" + " scale(" + d3.event.scale + ")")
+					}))
+					.append("g")
+
+					mapLayer.selectAll('path').append("svg:title").text(function(d) {
+						if(countriesVisited.indexOf(d.properties.geounit) >= 0)
+						{
+							return d.properties.geounit + "\n" + "First Visited: " + countries.filter(a => a.country === d.properties.geounit)[0].year
+						}
+						else
+						{
+							return d.properties.geounit + "\nNot Visited"
+						}
+						
+					});
+			});
+
+			function mouseover(d)
+			{
+				// Highlight hovered country
+				if(this.getAttribute('year') > 0)
+				{
+					d3.select(this).style('fill', 'darkgreen');
+				}
+				else
+				{
+					d3.select(this).style('fill', 'darkgray');
+				}
+      			
+			}
+
+			function mouseout(d){
+				// Reset country color
+				if(this.getAttribute('year') > 0)
+				{
+					d3.select(this).style('fill', 'limegreen');
+				}
+				else
+				{
+					d3.select(this).style('fill', 'white');
+				}
+			}
+			
+		</script>
+	</body>
+</html>
